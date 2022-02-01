@@ -7,7 +7,6 @@ export const state = {
   bodiesNeedSyncing: false,
   config: { step: 1 / 60 },
   constraints: {},
-  lastCallTime: null,
   materials: {},
   rays: {},
   springInstances: {},

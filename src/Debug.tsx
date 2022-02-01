@@ -6,9 +6,9 @@ import { useContext, useMemo, useRef, useState } from 'react'
 import type { Color } from 'three'
 import { Quaternion, Scene, Vector3 } from 'three'
 
-import type { BodyProps, BodyShapeType } from './hooks'
 import propsToBody from './propsToBody'
 import { context, debugContext } from './setup'
+import type { BodyProps, BodyShapeType } from './worker'
 
 type DebugInfo = { bodies: Body[]; bodyMap: { [uuid: string]: Body } }
 

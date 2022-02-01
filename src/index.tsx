@@ -6,6 +6,7 @@ import { Provider } from './Provider'
 export * from './Debug'
 export * from './hooks'
 export * from './setup'
+export * from './worker/types'
 
 function Physics(props: ProviderProps) {
   return (
