@@ -16,7 +16,7 @@ import type {
   WorkerFrameMessage,
   WorkerRayhitEvent,
 } from './worker'
-import { CannonWorkerApi } from './worker/worker-api'
+import { CannonWorkerApi } from './worker/cannon-worker-api'
 
 export type ProviderProps = PropsWithChildren<
   CannonWorkerApiProps & {

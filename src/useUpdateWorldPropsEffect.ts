@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 
 import type { ProviderProps } from './Provider'
 import type { WorldPropName } from './worker'
-import type { CannonWorkerApi } from './worker/worker-api'
+import type { CannonWorkerApi } from './worker/cannon-worker-api'
 
 type Props = Pick<Required<ProviderProps>, WorldPropName> & { worker: CannonWorkerApi }
 

@@ -1,7 +1,6 @@
 import type { ContactMaterialOptions, MaterialOptions, Shape } from 'cannon-es'
 import type { Object3D } from 'three'
 
-
 import type {
   AtomicProps,
   BodyShapeType,
@@ -10,7 +9,7 @@ import type {
   RayOptions,
   SpringOptns,
   WheelInfoOptions,
-} from './options'
+} from './props'
 import type {
   AtomicName,
   Broadphase,
@@ -74,17 +73,20 @@ export type SubscriptionName = typeof subscriptionNames[number]
 export type SetOpName<T extends AtomicName | VectorName | WorldPropName | 'quaternion' | 'rotation'> =
   `set${Capitalize<T>}`
 
-type Operation<T extends string, P> = { op: T } & (P extends void ? {} : { props: P })
-export type WithUUID<T extends string, P = void> = Operation<T, P> & { uuid: string }
-type WithUUIDs<T extends string, P = void> = Operation<T, P> & { uuid: string[] }
+type Operation<T extends string> = { op: T }
+export type WithProps<T, P> = T & { props: P }
+export type WithUUID<T extends { op: string }> = T & { uuid: string }
+export type WithUUIDs<T extends { op: string }> = T & { uuid: string[] }
 
-export type AddConstraintMessage = WithUUID<'addConstraint', [uuidA: string, uuidB: string, options: {}]> & {
+export type AddConstraintMessage = WithUUID<
+  WithProps<Operation<'addConstraint'>, [uuidA: string, uuidB: string, options: {}]>
+> & {
   type: 'Hinge' | ConstraintTypes
 }
 
-export type DisableConstraintMessage = WithUUID<'disableConstraint'>
-export type EnableConstraintMessage = WithUUID<'enableConstraint'>
-export type RemoveConstraintMessage = WithUUID<'removeConstraint'>
+export type DisableConstraintMessage = WithUUID<Operation<'disableConstraint'>>
+export type EnableConstraintMessage = WithUUID<Operation<'enableConstraint'>>
+export type RemoveConstraintMessage = WithUUID<Operation<'removeConstraint'>>
 
 type ConstraintMessage =
   | AddConstraintMessage
@@ -92,10 +94,10 @@ type ConstraintMessage =
   | EnableConstraintMessage
   | RemoveConstraintMessage
 
-export type DisableConstraintMotorMessage = WithUUID<'disableConstraintMotor'>
-export type EnableConstraintMotorMessage = WithUUID<'enableConstraintMotor'>
-export type SetConstraintMotorMaxForce = WithUUID<'setConstraintMotorMaxForce', number>
-export type SetConstraintMotorSpeed = WithUUID<'setConstraintMotorSpeed', number>
+export type DisableConstraintMotorMessage = WithUUID<Operation<'disableConstraintMotor'>>
+export type EnableConstraintMotorMessage = WithUUID<Operation<'enableConstraintMotor'>>
+export type SetConstraintMotorMaxForce = WithUUID<WithProps<Operation<'setConstraintMotorMaxForce'>, number>>
+export type SetConstraintMotorSpeed = WithUUID<WithProps<Operation<'setConstraintMotorSpeed'>, number>>
 
 type ConstraintMotorMessage =
   | DisableConstraintMotorMessage
@@ -103,12 +105,14 @@ type ConstraintMotorMessage =
   | SetConstraintMotorSpeed
   | SetConstraintMotorMaxForce
 
-export type AddSpringMessage = WithUUID<'addSpring', [uuidA: string, uuidB: string, options: SpringOptns]>
-export type RemoveSpringMessage = WithUUID<'removeSpring'>
+export type AddSpringMessage = WithUUID<
+  WithProps<Operation<'addSpring'>, [uuidA: string, uuidB: string, options: SpringOptns]>
+>
+export type RemoveSpringMessage = WithUUID<Operation<'removeSpring'>>
 
-export type SetSpringDampingMessage = WithUUID<'setSpringDamping', number>
-export type SetSpringRestLengthMessage = WithUUID<'setSpringRestLength', number>
-export type SetSpringStiffnessMessage = WithUUID<'setSpringStiffness', number>
+export type SetSpringDampingMessage = WithUUID<WithProps<Operation<'setSpringDamping'>, number>>
+export type SetSpringRestLengthMessage = WithUUID<WithProps<Operation<'setSpringRestLength'>, number>>
+export type SetSpringStiffnessMessage = WithUUID<WithProps<Operation<'setSpringStiffness'>, number>>
 
 type SpringMessage =
   | AddSpringMessage
@@ -118,46 +122,49 @@ type SpringMessage =
   | SetSpringStiffnessMessage
 
 export type AddContactMaterialMessage = WithUUID<
-  'addContactMaterial',
-  [materialA: MaterialOptions, materialB: MaterialOptions, options: ContactMaterialOptions]
+  WithProps<
+    Operation<'addContactMaterial'>,
+    [materialA: MaterialOptions, materialB: MaterialOptions, options: ContactMaterialOptions]
+  >
 >
-export type RemoveContactMaterialMessage = WithUUID<'removeContactMaterial'>
+export type RemoveContactMaterialMessage = WithUUID<Operation<'removeContactMaterial'>>
 type ContactMaterialMessage = AddContactMaterialMessage | RemoveContactMaterialMessage
 
 export type AddRayMessage = WithUUID<
-  'addRay',
-  {
-    mode: RayMode
-  } & RayOptions
+  WithProps<
+    Operation<'addRay'>,
+    {
+      mode: RayMode
+    } & RayOptions
+  >
 >
-export type RemoveRayMessage = WithUUID<'removeRay'>
+export type RemoveRayMessage = WithUUID<Operation<'removeRay'>>
 
 type RayMessage = AddRayMessage | RemoveRayMessage
 
 export type AddRaycastVehicleMessage = WithUUIDs<
-  'addRaycastVehicle',
-  [
-    chassisBodyUUID: string,
-    wheelsUUID: string[],
-    wheelInfos: WheelInfoOptions[],
-    indexForwardAxis: number,
-    indexRightAxis: number,
-    indexUpAxis: number,
-  ]
+  WithProps<
+    Operation<'addRaycastVehicle'>,
+    [
+      chassisBodyUUID: string,
+      wheelsUUID: string[],
+      wheelInfos: WheelInfoOptions[],
+      indexForwardAxis: number,
+      indexRightAxis: number,
+      indexUpAxis: number,
+    ]
+  >
 >
-export type RemoveRaycastVehicleMessage = WithUUIDs<'removeRaycastVehicle'>
+export type RemoveRaycastVehicleMessage = WithUUIDs<Operation<'removeRaycastVehicle'>>
 
 export type ApplyRaycastVehicleEngineForceMessage = WithUUID<
-  'applyRaycastVehicleEngineForce',
-  [value: number, wheelIndex: number]
+  WithProps<Operation<'applyRaycastVehicleEngineForce'>, [value: number, wheelIndex: number]>
 >
 export type SetRaycastVehicleBrakeMessage = WithUUID<
-  'setRaycastVehicleBrake',
-  [brake: number, wheelIndex: number]
+  WithProps<Operation<'setRaycastVehicleBrake'>, [brake: number, wheelIndex: number]>
 >
 export type SetRaycastVehicleSteeringValueMessage = WithUUID<
-  'setRaycastVehicleSteeringValue',
-  [value: number, wheelIndex: number]
+  WithProps<Operation<'setRaycastVehicleSteeringValue'>, [value: number, wheelIndex: number]>
 >
 
 type RaycastVehicleMessage =
@@ -167,18 +174,28 @@ type RaycastVehicleMessage =
   | SetRaycastVehicleBrakeMessage
   | SetRaycastVehicleSteeringValueMessage
 
-export type AtomicMessage = WithUUID<SetOpName<AtomicName>, any>
+export type AtomicMessage<T extends AtomicName | undefined = undefined> = WithUUID<
+  WithProps<Operation<SetOpName<AtomicName>>, T extends AtomicName ? PropValue<T> : any>
+>
 
-export type VectorMessage = WithUUID<SetOpName<VectorName>, Triplet>
+export type VectorMessage = WithUUID<WithProps<Operation<SetOpName<VectorName>>, Triplet>>
 
-export type RotationMessage = WithUUID<SetOpName<'rotation'>, Triplet>
-export type QuaternionMessage = WithUUID<SetOpName<'quaternion'>, Quad>
+export type RotationMessage = WithUUID<WithProps<Operation<SetOpName<'rotation'>>, Triplet>>
+export type QuaternionMessage = WithUUID<WithProps<Operation<SetOpName<'quaternion'>>, Quad>>
 
-export type ApplyForceMessage = WithUUID<'applyForce', [force: Triplet, worldPoint: Triplet]>
-export type ApplyImpulseMessage = WithUUID<'applyImpulse', [impulse: Triplet, worldPoint: Triplet]>
-export type ApplyLocalForceMessage = WithUUID<'applyLocalForce', [force: Triplet, localPoint: Triplet]>
-export type ApplyLocalImpulseMessage = WithUUID<'applyLocalImpulse', [impulse: Triplet, localPoint: Triplet]>
-export type ApplyTorque = WithUUID<'applyTorque', [torque: Triplet]>
+export type ApplyForceMessage = WithUUID<
+  WithProps<Operation<'applyForce'>, [force: Triplet, worldPoint: Triplet]>
+>
+export type ApplyImpulseMessage = WithUUID<
+  WithProps<Operation<'applyImpulse'>, [impulse: Triplet, worldPoint: Triplet]>
+>
+export type ApplyLocalForceMessage = WithUUID<
+  WithProps<Operation<'applyLocalForce'>, [force: Triplet, localPoint: Triplet]>
+>
+export type ApplyLocalImpulseMessage = WithUUID<
+  WithProps<Operation<'applyLocalImpulse'>, [impulse: Triplet, localPoint: Triplet]>
+>
+export type ApplyTorque = WithUUID<WithProps<Operation<'applyTorque'>, [torque: Triplet]>>
 
 export type ApplyMessage =
   | ApplyForceMessage
@@ -191,16 +208,18 @@ type SerializableBodyProps = {
   onCollide: boolean
 }
 
-export type AddBodiesMessage = WithUUIDs<'addBodies', SerializableBodyProps[]> & { type: BodyShapeType }
-export type RemoveBodiesMessage = WithUUIDs<'removeBodies'>
+export type AddBodiesMessage = WithUUIDs<WithProps<Operation<'addBodies'>, SerializableBodyProps[]>> & {
+  type: BodyShapeType
+}
+export type RemoveBodiesMessage = WithUUIDs<Operation<'removeBodies'>>
 
 export type BodiesMessage = AddBodiesMessage | RemoveBodiesMessage
 
-export type SleepMessage = WithUUID<'sleep'>
-export type WakeUpMessage = WithUUID<'wakeUp'>
+export type SleepMessage = WithUUID<Operation<'sleep'>>
+export type WakeUpMessage = WithUUID<Operation<'wakeUp'>>
 
-export type InitMessage = Operation<
-  'init',
+export type InitMessage = WithProps<
+  Operation<'init'>,
   {
     allowSleep: boolean
     axisIndex: number
@@ -215,8 +234,8 @@ export type InitMessage = Operation<
   }
 >
 
-export type StepMessage = Operation<
-  'step',
+export type StepMessage = WithProps<
+  Operation<'step'>,
   {
     dt?: number
     maxSubSteps?: number
@@ -230,20 +249,25 @@ export type StepMessage = Operation<
 export type SubscriptionTarget = 'bodies' | 'vehicles'
 
 export type SubscribeMessage = WithUUID<
-  'subscribe',
-  {
-    id: number
-    target: SubscriptionTarget
-    type: SubscriptionName
-  }
+  WithProps<
+    Operation<'subscribe'>,
+    {
+      id: number
+      target: SubscriptionTarget
+      type: SubscriptionName
+    }
+  >
 >
-export type UnsubscribeMessage = Operation<'unsubscribe', number>
+export type UnsubscribeMessage = WithProps<Operation<'unsubscribe'>, number>
 
 export type SubscriptionMessage = SubscribeMessage | UnsubscribeMessage
 
 export type WorldPropName = 'axisIndex' | 'broadphase' | 'gravity' | 'iterations' | 'tolerance'
 
-type WorldMessage<T extends WorldPropName> = Operation<SetOpName<T>, Required<InitMessage['props'][T]>>
+type WorldMessage<T extends WorldPropName> = WithProps<
+  Operation<SetOpName<T>>,
+  Required<InitMessage['props'][T]>
+>
 
 export type CannonMessage =
   | ApplyMessage

@@ -1,3 +1,3 @@
-export * from './operations'
-export * from './options'
+export * from './ops'
+export * from './props'
 export * from './types'

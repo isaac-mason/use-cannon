@@ -43,7 +43,7 @@ import type {
   SpringOptns,
   TrimeshProps,
 } from './worker'
-import type { CannonWorkerApi } from './worker/worker-api'
+import type { CannonWorkerApi } from './worker/cannon-worker-api'
 
 export type AtomicApi<K extends AtomicName> = {
   set: (value: AtomicProps[K]) => void

@@ -15,15 +15,16 @@ import type {
   ApplyLocalImpulseMessage,
   ApplyRaycastVehicleEngineForceMessage,
   ApplyTorque,
-  AtomicName,
+  AtomicMessage,
   Broadphase,
   CannonMessage,
+  CannonWorker,
   CannonWorkerApiProps,
   DisableConstraintMessage,
   DisableConstraintMotorMessage,
   EnableConstraintMessage,
   EnableConstraintMotorMessage,
-  PropValue,
+  IncomingWorkerMessage,
   QuaternionMessage,
   RemoveBodiesMessage,
   RemoveConstraintMessage,
@@ -34,7 +35,6 @@ import type {
   RotationMessage,
   SetConstraintMotorMaxForce,
   SetConstraintMotorSpeed,
-  SetOpName,
   SetRaycastVehicleBrakeMessage,
   SetRaycastVehicleSteeringValueMessage,
   SetSpringDampingMessage,
@@ -45,13 +45,9 @@ import type {
   Triplet,
   VectorMessage,
   WakeUpMessage,
-  WithUUID,
 } from './types'
-import type { CannonWorker, IncomingWorkerMessage } from './types'
 
 type WithoutOp<T extends CannonMessage> = Omit<T, 'op'>
-
-export type AtomicParams<T extends AtomicName> = WithoutOp<WithUUID<SetOpName<AtomicName>, PropValue<T>>>
 
 export class CannonWorkerApi extends EventEmitter {
   get axisIndex(): number {
@@ -300,11 +296,11 @@ export class CannonWorkerApi extends EventEmitter {
     this.worker.postMessage({ op: 'removeSpring', uuid })
   }
 
-  setAllowSleep({ props, uuid }: AtomicParams<'allowSleep'>) {
+  setAllowSleep({ props, uuid }: WithoutOp<AtomicMessage<'allowSleep'>>) {
     this.worker.postMessage({ op: 'setAllowSleep', props, uuid })
   }
 
-  setAngularDamping({ props, uuid }: AtomicParams<'angularDamping'>) {
+  setAngularDamping({ props, uuid }: WithoutOp<AtomicMessage<'angularDamping'>>) {
     this.worker.postMessage({ op: 'setAngularDamping', props, uuid })
   }
 
@@ -316,15 +312,15 @@ export class CannonWorkerApi extends EventEmitter {
     this.worker.postMessage({ op: 'setAngularVelocity', props, uuid })
   }
 
-  setCollisionFilterGroup({ props, uuid }: AtomicParams<'collisionFilterGroup'>) {
+  setCollisionFilterGroup({ props, uuid }: WithoutOp<AtomicMessage<'collisionFilterGroup'>>) {
     this.worker.postMessage({ op: 'setCollisionFilterGroup', props, uuid })
   }
 
-  setCollisionFilterMask({ props, uuid }: AtomicParams<'collisionFilterMask'>) {
+  setCollisionFilterMask({ props, uuid }: WithoutOp<AtomicMessage<'collisionFilterMask'>>) {
     this.worker.postMessage({ op: 'setCollisionFilterMask', props, uuid })
   }
 
-  setCollisionResponse({ props, uuid }: AtomicParams<'collisionResponse'>) {
+  setCollisionResponse({ props, uuid }: WithoutOp<AtomicMessage<'collisionResponse'>>) {
     this.worker.postMessage({ op: 'setCollisionResponse', props, uuid })
   }
 
@@ -336,15 +332,15 @@ export class CannonWorkerApi extends EventEmitter {
     this.worker.postMessage({ op: 'setConstraintMotorSpeed', props, uuid })
   }
 
-  setFixedRotation({ props, uuid }: AtomicParams<'fixedRotation'>) {
+  setFixedRotation({ props, uuid }: WithoutOp<AtomicMessage<'fixedRotation'>>) {
     this.worker.postMessage({ op: 'setFixedRotation', props, uuid })
   }
 
-  setIsTrigger({ props, uuid }: AtomicParams<'isTrigger'>) {
+  setIsTrigger({ props, uuid }: WithoutOp<AtomicMessage<'isTrigger'>>) {
     this.worker.postMessage({ op: 'setIsTrigger', props, uuid })
   }
 
-  setLinearDamping({ props, uuid }: AtomicParams<'linearDamping'>) {
+  setLinearDamping({ props, uuid }: WithoutOp<AtomicMessage<'linearDamping'>>) {
     this.worker.postMessage({ op: 'setLinearDamping', props, uuid })
   }
 
@@ -352,13 +348,12 @@ export class CannonWorkerApi extends EventEmitter {
     this.worker.postMessage({ op: 'setLinearFactor', props, uuid })
   }
 
-  setMass({ props, uuid }: AtomicParams<'mass'>) {
+  setMass({ props, uuid }: WithoutOp<AtomicMessage<'mass'>>) {
     this.worker.postMessage({ op: 'setMass', props, uuid })
   }
 
-  // todo - missing `props`, and worker handler appears to be missing
-  setMaterial({ uuid }: AtomicParams<'material'>) {
-    this.worker.postMessage({ op: 'setMaterial', uuid })
+  setMaterial({ props, uuid }: WithoutOp<AtomicMessage<'material'>>) {
+    this.worker.postMessage({ op: 'setMaterial', props, uuid })
   }
 
   setPosition({ props, uuid }: WithoutOp<VectorMessage>) {
@@ -385,11 +380,11 @@ export class CannonWorkerApi extends EventEmitter {
     this.worker.postMessage({ op: 'setRotation', props, uuid })
   }
 
-  setSleepSpeedLimit({ props, uuid }: AtomicParams<'sleepSpeedLimit'>) {
+  setSleepSpeedLimit({ props, uuid }: WithoutOp<AtomicMessage<'sleepSpeedLimit'>>) {
     this.worker.postMessage({ op: 'setSleepSpeedLimit', props, uuid })
   }
 
-  setSleepTimeLimit({ props, uuid }: AtomicParams<'sleepTimeLimit'>) {
+  setSleepTimeLimit({ props, uuid }: WithoutOp<AtomicMessage<'sleepTimeLimit'>>) {
     this.worker.postMessage({ op: 'setSleepTimeLimit', props, uuid })
   }
 
@@ -405,7 +400,7 @@ export class CannonWorkerApi extends EventEmitter {
     this.worker.postMessage({ op: 'setSpringStiffness', props, uuid })
   }
 
-  setUserData({ props, uuid }: AtomicParams<'userData'>) {
+  setUserData({ props, uuid }: WithoutOp<AtomicMessage<'userData'>>) {
     this.worker.postMessage({ op: 'setUserData', props, uuid })
   }
 

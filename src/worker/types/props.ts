@@ -1,8 +1,7 @@
 import type { MaterialOptions, RayOptions as RayOptionsImpl } from 'cannon-es'
 import type { Vector3 } from 'three'
 
-
-import type { CollideBeginEvent, CollideEndEvent, CollideEvent } from './operations'
+import type { CollideBeginEvent, CollideEndEvent, CollideEvent } from './ops'
 import type { Quad, Triplet, VectorName } from './types'
 
 export type AtomicProps = {

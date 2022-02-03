@@ -1,2 +1,2 @@
+export * from './cannon-worker-api'
 export * from './types'
-export * from './worker-api'

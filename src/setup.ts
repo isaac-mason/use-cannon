@@ -2,7 +2,7 @@ import type { MutableRefObject } from 'react'
 import { createContext } from 'react'
 
 import type { BodyProps, BodyShapeType, CannonEvents, Refs, Subscriptions } from './worker'
-import type { CannonWorkerApi } from './worker/worker-api'
+import type { CannonWorkerApi } from './worker/cannon-worker-api'
 
 export type ProviderContext = {
   bodies: MutableRefObject<{ [uuid: string]: number }>
