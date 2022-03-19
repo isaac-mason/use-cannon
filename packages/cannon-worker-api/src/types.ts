@@ -1,7 +1,7 @@
 import type { ContactMaterialOptions, MaterialOptions, RayOptions as RayOptionsImpl, Shape } from 'cannon-es'
 import type { Object3D } from 'three'
 
-import type { AtomicProps, BodyShapeType } from './body'
+import type { AtomicProps, BodyProps, BodyShapeType } from './body'
 
 export type { ContactMaterialOptions }
 
@@ -181,7 +181,7 @@ export type RayOptions = Omit<AddRayProps, 'mode'>
 type AtomicMessage<T extends AtomicName> = WithUUID<SetOpName<T>, AtomicProps[T]>
 type VectorMessage = WithUUID<SetOpName<VectorName>, Triplet>
 
-type SerializableBodyProps = {
+export type SerializableBodyProps = Omit<BodyProps, 'onCollide' | 'onCollideBegin' | 'onCollideEnd'> & {
   onCollide: boolean
 }
 
@@ -389,6 +389,13 @@ export type CannonMessageMap = {
 }
 
 type OpName = keyof CannonMessageMap
+
+type CannonEvent = CollideBeginEvent | CollideEndEvent | CollideEvent | RayhitEvent
+type CallbackByType<T extends { type: string }> = {
+  [K in T['type']]?: T extends { type: K } ? (e: T) => void : never
+}
+
+export type CannonEvents = { [uuid: string]: Partial<CallbackByType<CannonEvent>> }
 
 export type CannonMessageBody<T extends OpName> = Omit<CannonMessageMap[T], 'op'>
 export type CannonMessageProps<T extends OpName> = CannonMessageMap[T] extends { props: unknown }

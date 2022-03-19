@@ -1,10 +1,7 @@
 import type {
-  AtomicName,
-  AtomicProps,
   BodyProps,
   BodyShapeType,
   BoxProps,
-  CannonWorkerAPI,
   CompoundBodyProps,
   ConeTwistConstraintOpts,
   ConstraintOptns,
@@ -21,76 +18,33 @@ import type {
   ParticleProps,
   PlaneProps,
   PointToPointConstraintOpts,
-  PropValue,
-  Quad,
   RayhitEvent,
   RayMode,
   RayOptions,
-  SetOpName,
   SphereArgs,
   SphereProps,
   SpringOptns,
-  SubscriptionName,
-  SubscriptionTarget,
   TrimeshProps,
   Triplet,
-  VectorName,
   WheelInfoOptions,
+  WorkerApi,
 } from '@pmndrs/cannon-worker-api'
+import { BodyApi } from '@pmndrs/cannon-worker-api'
 import type { DependencyList, MutableRefObject, Ref, RefObject } from 'react'
 import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { DynamicDrawUsage, Euler, InstancedMesh, MathUtils, Object3D, Quaternion, Vector3 } from 'three'
+import { InstancedMesh, MathUtils, Object3D, Vector3 } from 'three'
 
-import type { ProviderContext } from './setup'
-import { context, debugContext } from './setup'
-
-export type AtomicApi<K extends AtomicName> = {
-  set: (value: AtomicProps[K]) => void
-  subscribe: (callback: (value: AtomicProps[K]) => void) => () => void
-}
-
-export type QuaternionApi = {
-  copy: ({ w, x, y, z }: Quaternion) => void
-  set: (x: number, y: number, z: number, w: number) => void
-  subscribe: (callback: (value: Quad) => void) => () => void
-}
-
-export type VectorApi = {
-  copy: ({ x, y, z }: Vector3 | Euler) => void
-  set: (x: number, y: number, z: number) => void
-  subscribe: (callback: (value: Triplet) => void) => () => void
-}
-
-export type WorkerApi = {
-  [K in AtomicName]: AtomicApi<K>
-} & {
-  [K in VectorName]: VectorApi
-} & {
-  applyForce: (force: Triplet, worldPoint: Triplet) => void
-  applyImpulse: (impulse: Triplet, worldPoint: Triplet) => void
-  applyLocalForce: (force: Triplet, localPoint: Triplet) => void
-  applyLocalImpulse: (impulse: Triplet, localPoint: Triplet) => void
-  applyTorque: (torque: Triplet) => void
-  quaternion: QuaternionApi
-  rotation: VectorApi
-  sleep: () => void
-  wakeUp: () => void
-}
+import { context } from './setup'
 
 export interface PublicApi extends WorkerApi {
   at: (index: number) => WorkerApi
 }
-export type Api = [RefObject<Object3D>, PublicApi]
 
-const temp = new Object3D()
+export type Api = [RefObject<Object3D>, PublicApi]
 
 function useForwardedRef<T>(ref: Ref<T>): MutableRefObject<T | null> {
   const nullRef = useRef<T>(null)
   return ref && typeof ref !== 'function' ? ref : nullRef
-}
-
-function capitalize<T extends string>(str: T): Capitalize<T> {
-  return (str.charAt(0).toUpperCase() + str.slice(1)) as Capitalize<T>
 }
 
 function getUUID(ref: Ref<Object3D>, index?: number): string | null {
@@ -99,56 +53,39 @@ function getUUID(ref: Ref<Object3D>, index?: number): string | null {
   return ref && ref.current && `${ref.current.uuid}${suffix}`
 }
 
-const e = new Euler()
-const q = new Quaternion()
-
-const quaternionToRotation = (callback: (v: Triplet) => void) => {
-  return (v: Quad) => callback(e.setFromQuaternion(q.fromArray(v)).toArray() as Triplet)
-}
-
-let incrementingId = 0
-
-function subscribe<T extends SubscriptionName>(
-  ref: RefObject<Object3D>,
-  worker: CannonWorkerAPI,
-  subscriptions: ProviderContext['subscriptions'],
-  type: T,
-  index?: number,
-  target: SubscriptionTarget = 'bodies',
-) {
-  return (callback: (value: PropValue<T>) => void) => {
-    const id = incrementingId++
-    subscriptions[id] = { [type]: callback }
-    const uuid = getUUID(ref, index)
-    uuid && worker.subscribe({ props: { id, target, type }, uuid })
-    return () => {
-      delete subscriptions[id]
-      worker.unsubscribe({ props: id })
-    }
-  }
-}
-
-function prepare(object: Object3D, props: BodyProps) {
-  object.userData = props.userData || {}
-  object.position.set(...(props.position || [0, 0, 0]))
-  object.rotation.set(...(props.rotation || [0, 0, 0]))
-  object.updateMatrix()
-}
-
-function setupCollision(
-  events: ProviderContext['events'],
-  { onCollide, onCollideBegin, onCollideEnd }: Partial<BodyProps>,
-  uuid: string,
-) {
-  events[uuid] = {
-    collide: onCollide,
-    collideBegin: onCollideBegin,
-    collideEnd: onCollideEnd,
-  }
-}
-
 type GetByIndex<T extends BodyProps> = (index: number) => T
 type ArgFn<T> = (args: T) => unknown[]
+
+class HookBodyApi extends BodyApi {
+  private apiCache: { [index: number]: BodyApi } = {}
+
+  at = (index: number) => {
+    let api = this.apiCache[index]
+    if (api) {
+      return api
+    }
+
+    api = new HookInstanceBodyApi(this, index)
+    api._world = this._world
+    this.apiCache[index] = api
+    return api
+  }
+}
+
+class HookInstanceBodyApi extends BodyApi {
+  private index: number
+  private parent: HookBodyApi
+
+  get uuid(): string {
+    return `${this.parent.uuid}/${this.index}`
+  }
+
+  constructor(parent: HookBodyApi, index: number) {
+    super()
+    this.index = index
+    this.parent = parent
+  }
+}
 
 function useBody<B extends BodyProps<unknown[]>>(
   type: BodyShapeType,
@@ -158,198 +95,39 @@ function useBody<B extends BodyProps<unknown[]>>(
   deps: DependencyList = [],
 ): Api {
   const ref = useForwardedRef(fwdRef)
-  const { worker, refs, events, subscriptions } = useContext(context)
-  const debugApi = useContext(debugContext)
+  const { world } = useContext(context)
 
   useLayoutEffect(() => {
-    if (!ref.current) {
-      // When the reference isn't used we create a stub
-      // The body doesn't have a visual representation but can still be constrained
-      ref.current = new Object3D()
-    }
-
     const object = ref.current
-    const currentWorker = worker
-
-    const objectCount =
-      object instanceof InstancedMesh ? (object.instanceMatrix.setUsage(DynamicDrawUsage), object.count) : 1
-
-    const uuid =
-      object instanceof InstancedMesh
-        ? new Array(objectCount).fill(0).map((_, i) => `${object.uuid}/${i}`)
-        : [object.uuid]
 
     const props: (B & { args: unknown })[] =
       object instanceof InstancedMesh
-        ? uuid.map((id, i) => {
-            const props = fn(i)
-            prepare(temp, props)
-            object.setMatrixAt(i, temp.matrix)
-            object.instanceMatrix.needsUpdate = true
-            refs[id] = object
-            if (debugApi) debugApi.add(id, props, type)
-            setupCollision(events, props, id)
-            return { ...props, args: argsFn(props.args) }
+        ? new Array(object.count).fill(0).map((_, i) => {
+            const bodyProps = fn(i)
+            return { ...bodyProps, args: argsFn(bodyProps.args) }
           })
-        : uuid.map((id, i) => {
-            const props = fn(i)
-            prepare(object, props)
-            refs[id] = object
-            if (debugApi) debugApi.add(id, props, type)
-            setupCollision(events, props, id)
-            return { ...props, args: argsFn(props.args) }
-          })
+        : [
+            (() => {
+              const bodyProps = fn(0)
+              return { ...bodyProps, args: argsFn(bodyProps.args) }
+            })(),
+          ]
 
-    // Register on mount, unregister on unmount
-    currentWorker.addBodies({
-      props: props.map(({ onCollide, onCollideBegin, onCollideEnd, ...serializableProps }) => {
-        return { onCollide: Boolean(onCollide), ...serializableProps }
-      }),
-      type,
+    const {
       uuid,
-    })
+      object: { uuid: objectUUID },
+    } = world.createBodies(type, props, object)
+
+    api._uuid = objectUUID
+
     return () => {
-      uuid.forEach((id) => {
-        delete refs[id]
-        if (debugApi) debugApi.remove(id)
-        delete events[id]
-      })
-      currentWorker.removeBodies({ uuid })
+      world.removeBodies(uuid)
     }
   }, deps)
 
-  const api = useMemo(() => {
-    const makeAtomic = <T extends AtomicName>(type: T, index?: number) => {
-      const op: SetOpName<T> = `set${capitalize(type)}`
+  const api = new HookBodyApi()
+  api._world = world
 
-      return {
-        set: (value: PropValue<T>) => {
-          const uuid = getUUID(ref, index)
-          uuid &&
-            worker[op]({
-              props: value,
-              uuid,
-            } as never)
-        },
-        subscribe: subscribe(ref, worker, subscriptions, type, index),
-      }
-    }
-
-    const makeQuaternion = (index?: number) => {
-      const type = 'quaternion'
-      return {
-        copy: ({ w, x, y, z }: Quaternion) => {
-          const uuid = getUUID(ref, index)
-          uuid && worker.setQuaternion({ props: [x, y, z, w], uuid })
-        },
-        set: (x: number, y: number, z: number, w: number) => {
-          const uuid = getUUID(ref, index)
-          uuid && worker.setQuaternion({ props: [x, y, z, w], uuid })
-        },
-        subscribe: subscribe(ref, worker, subscriptions, type, index),
-      }
-    }
-
-    const makeRotation = (index?: number) => {
-      return {
-        copy: ({ x, y, z }: Vector3 | Euler) => {
-          const uuid = getUUID(ref, index)
-          uuid && worker.setRotation({ props: [x, y, z], uuid })
-        },
-        set: (x: number, y: number, z: number) => {
-          const uuid = getUUID(ref, index)
-          uuid && worker.setRotation({ props: [x, y, z], uuid })
-        },
-        subscribe: (callback: (value: Triplet) => void) => {
-          const id = incrementingId++
-          const target = 'bodies'
-          const type = 'quaternion'
-          const uuid = getUUID(ref, index)
-
-          subscriptions[id] = { [type]: quaternionToRotation(callback) }
-          uuid && worker.subscribe({ props: { id, target, type }, uuid })
-          return () => {
-            delete subscriptions[id]
-            worker.unsubscribe({ props: id })
-          }
-        },
-      }
-    }
-
-    const makeVec = (type: VectorName, index?: number) => {
-      const op: SetOpName<VectorName> = `set${capitalize(type)}`
-      return {
-        copy: ({ x, y, z }: Vector3 | Euler) => {
-          const uuid = getUUID(ref, index)
-          uuid && worker[op]({ props: [x, y, z], uuid })
-        },
-        set: (x: number, y: number, z: number) => {
-          const uuid = getUUID(ref, index)
-          uuid && worker[op]({ props: [x, y, z], uuid })
-        },
-        subscribe: subscribe(ref, worker, subscriptions, type, index),
-      }
-    }
-
-    function makeApi(index?: number): WorkerApi {
-      return {
-        allowSleep: makeAtomic('allowSleep', index),
-        angularDamping: makeAtomic('angularDamping', index),
-        angularFactor: makeVec('angularFactor', index),
-        angularVelocity: makeVec('angularVelocity', index),
-        applyForce(force: Triplet, worldPoint: Triplet) {
-          const uuid = getUUID(ref, index)
-          uuid && worker.applyForce({ props: [force, worldPoint], uuid })
-        },
-        applyImpulse(impulse: Triplet, worldPoint: Triplet) {
-          const uuid = getUUID(ref, index)
-          uuid && worker.applyImpulse({ props: [impulse, worldPoint], uuid })
-        },
-        applyLocalForce(force: Triplet, localPoint: Triplet) {
-          const uuid = getUUID(ref, index)
-          uuid && worker.applyLocalForce({ props: [force, localPoint], uuid })
-        },
-        applyLocalImpulse(impulse: Triplet, localPoint: Triplet) {
-          const uuid = getUUID(ref, index)
-          uuid && worker.applyLocalImpulse({ props: [impulse, localPoint], uuid })
-        },
-        applyTorque(torque: Triplet) {
-          const uuid = getUUID(ref, index)
-          uuid && worker.applyTorque({ props: [torque], uuid })
-        },
-        collisionFilterGroup: makeAtomic('collisionFilterGroup', index),
-        collisionFilterMask: makeAtomic('collisionFilterMask', index),
-        collisionResponse: makeAtomic('collisionResponse', index),
-        fixedRotation: makeAtomic('fixedRotation', index),
-        isTrigger: makeAtomic('isTrigger', index),
-        linearDamping: makeAtomic('linearDamping', index),
-        linearFactor: makeVec('linearFactor', index),
-        mass: makeAtomic('mass', index),
-        material: makeAtomic('material', index),
-        position: makeVec('position', index),
-        quaternion: makeQuaternion(index),
-        rotation: makeRotation(index),
-        sleep() {
-          const uuid = getUUID(ref, index)
-          uuid && worker.sleep({ uuid })
-        },
-        sleepSpeedLimit: makeAtomic('sleepSpeedLimit', index),
-        sleepTimeLimit: makeAtomic('sleepTimeLimit', index),
-        userData: makeAtomic('userData', index),
-        velocity: makeVec('velocity', index),
-        wakeUp() {
-          const uuid = getUUID(ref, index)
-          uuid && worker.wakeUp({ uuid })
-        },
-      }
-    }
-
-    const cache: { [index: number]: WorkerApi } = {}
-    return {
-      ...makeApi(undefined),
-      at: (index: number) => cache[index] || (cache[index] = makeApi(index)),
-    }
-  }, [])
   return [ref, api]
 }
 
@@ -597,14 +375,14 @@ function useRay(
   callback: (e: RayhitEvent) => void,
   deps: DependencyList = [],
 ) {
-  const { worker, events } = useContext(context)
+  const { worker, world } = useContext(context)
   const [uuid] = useState(() => MathUtils.generateUUID())
   useEffect(() => {
-    events[uuid] = { rayhit: callback }
+    world.events[uuid] = { rayhit: callback }
     worker.addRay({ props: { ...options, mode }, uuid })
     return () => {
       worker.removeRay({ uuid })
-      delete events[uuid]
+      delete world.events[uuid]
     }
   }, deps)
 }
@@ -661,7 +439,7 @@ export function useRaycastVehicle(
   deps: DependencyList = [],
 ): [RefObject<Object3D>, RaycastVehiclePublicApi] {
   const ref = useForwardedRef(fwdRef)
-  const { worker, subscriptions } = useContext(context)
+  const { worker, world } = useContext(context)
 
   useLayoutEffect(() => {
     if (!ref.current) {
@@ -718,7 +496,7 @@ export function useRaycastVehicle(
           })
       },
       sliding: {
-        subscribe: subscribe(ref, worker, subscriptions, 'sliding', undefined, 'vehicles'),
+        subscribe: world.subscribe(ref.current || undefined, 'sliding', undefined, 'vehicles'),
       },
     }
   }, deps)

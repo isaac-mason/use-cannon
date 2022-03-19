@@ -24,13 +24,13 @@ const q = new Quaternion()
 
 export const Debug: FC<DebugProps> = ({ children, color = 'black', impl = CannonDebugger, scale = 1 }) => {
   const [{ bodies, bodyMap }] = useState<DebugInfo>({ bodies: [], bodyMap: {} })
-  const { refs } = useContext(context)
+  const { world } = useContext(context)
   const [scene] = useState(() => new Scene())
   const cannonDebuggerRef = useRef(impl(scene, { bodies } as World, { color, scale }))
 
   useFrame(() => {
     for (const uuid in bodyMap) {
-      refs[uuid].matrix.decompose(v, q, s)
+      world.refs[uuid].matrix.decompose(v, q, s)
       bodyMap[uuid].position.copy(v as unknown as Vec3)
       bodyMap[uuid].quaternion.copy(q as unknown as CQuaternion)
     }
