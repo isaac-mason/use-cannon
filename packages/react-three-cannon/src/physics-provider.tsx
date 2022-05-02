@@ -1,12 +1,12 @@
 import type {
-  CannonWorkerProps,
   WorkerCollideBeginEvent,
   WorkerCollideEndEvent,
   WorkerCollideEvent,
   WorkerFrameMessage,
   WorkerRayhitEvent,
+  WorldProps,
 } from '@pmndrs/cannon-worker-api'
-import { CannonWorkerAPI } from '@pmndrs/cannon-worker-api'
+import { World } from '@pmndrs/cannon-worker-api'
 import type { RenderCallback } from '@react-three/fiber'
 import { useFrame, useThree } from '@react-three/fiber'
 import type { PropsWithChildren } from 'react'
@@ -17,7 +17,7 @@ import { InstancedMesh, Matrix4, Quaternion, Vector3 } from 'three'
 import type { PhysicsContext } from './physics-context'
 import { physicsContext } from './physics-context'
 
-export type PhysicsProviderProps = CannonWorkerProps & {
+export type PhysicsProviderProps = WorldProps & {
   isPaused?: boolean
   maxSubSteps?: number
   shouldInvalidate?: boolean
@@ -67,13 +67,8 @@ export function PhysicsProvider({
 }: PropsWithChildren<PhysicsProviderProps>): JSX.Element {
   const { invalidate } = useThree()
 
-  const [{ bodies, events, refs, scaleOverrides, subscriptions, worker }] = useState<PhysicsContext>(() => ({
-    bodies: {},
-    events: {},
-    refs: {},
-    scaleOverrides: {},
-    subscriptions: {},
-    worker: new CannonWorkerAPI({
+  const [{ world }] = useState<PhysicsContext>(() => ({
+    world: new World({
       allowSleep,
       axisIndex,
       broadphase,
@@ -87,6 +82,8 @@ export function PhysicsProvider({
       tolerance,
     }),
   }))
+
+  const { bodies, events, refs, scaleOverrides, subscriptions, worker } = world
 
   let timeSinceLastCalled = 0
 
@@ -243,10 +240,7 @@ export function PhysicsProvider({
     worker.tolerance = tolerance
   }, [tolerance])
 
-  const value = useMemo<PhysicsContext>(
-    () => ({ bodies, events, refs, scaleOverrides, subscriptions, worker }),
-    [bodies, events, refs, subscriptions, worker],
-  )
+  const value = useMemo<PhysicsContext>(() => ({ world }), [world])
 
   return <physicsContext.Provider value={value}>{children}</physicsContext.Provider>
 }

@@ -1,4 +1,6 @@
 export * from './body'
 export * from './cannon-worker-api'
+export * from './contact-material'
 export * from './props-to-body'
 export * from './types'
+export * from './world'

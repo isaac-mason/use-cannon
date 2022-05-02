@@ -6,13 +6,13 @@ import type {
   CannonMessage,
   CannonMessageBody,
   CannonWebWorker,
+  CreateWorldProps,
   IncomingWorkerMessage,
   StepProps,
   Triplet,
-  WorldProps,
 } from './types'
 
-export type CannonWorkerProps = Partial<WorldProps> & { size?: number }
+export type CannonWorkerProps = Partial<CreateWorldProps> & { size?: number }
 
 export class CannonWorkerAPI extends EventEmitter {
   get axisIndex(): 0 | 1 | 2 {

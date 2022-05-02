@@ -39,7 +39,9 @@ export function DebugProvider({
   scale = 1,
 }: PropsWithChildren<DebugProviderProps>): JSX.Element {
   const [{ bodies, bodyMap }] = useState<DebugInfo>({ bodies: [], bodyMap: {} })
-  const { refs } = usePhysicsContext()
+  const {
+    world: { refs },
+  } = usePhysicsContext()
   const [scene] = useState(() => new Scene())
   const cannonDebuggerRef = useRef(impl(scene, { bodies } as World, { color, scale }))
 

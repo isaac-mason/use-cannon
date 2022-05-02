@@ -1,5 +1,5 @@
 import type { ContactMaterialOptions, MaterialOptions, RayOptions as RayOptionsImpl, Shape } from 'cannon-es'
-import type { Object3D } from 'three'
+import type { Object3D, Vector3 } from 'three'
 
 import type { AtomicProps, BodyShapeType } from './body'
 
@@ -296,7 +296,7 @@ export type StepProps = {
   timeSinceLastCalled?: number
 }
 
-export type WorldProps = {
+export type CreateWorldProps = {
   allowSleep: boolean
   axisIndex: 0 | 1 | 2
   broadphase: Broadphase
@@ -309,7 +309,7 @@ export type WorldProps = {
   tolerance: number
 }
 
-type WorldMessage<T extends WorldPropName> = Operation<SetOpName<T>, WorldProps[T]>
+type WorldMessage<T extends WorldPropName> = Operation<SetOpName<T>, CreateWorldProps[T]>
 
 export type CannonMessageMap = {
   addBodies: WithUUIDs<'addBodies', SerializableBodyProps[]> & { type: BodyShapeType }
@@ -341,7 +341,7 @@ export type CannonMessageMap = {
   disableConstraintMotor: WithUUID<'disableConstraintMotor'>
   enableConstraint: WithUUID<'enableConstraint'>
   enableConstraintMotor: WithUUID<'enableConstraintMotor'>
-  init: Operation<'init', WorldProps>
+  init: Operation<'init', CreateWorldProps>
   removeBodies: WithUUIDs<'removeBodies'>
   removeConstraint: WithUUID<'removeConstraint'>
   removeContactMaterial: WithUUID<'removeContactMaterial'>
@@ -407,3 +407,12 @@ export interface CannonWebWorker extends Worker {
   postMessage(message: CannonMessage, options?: StructuredSerializeOptions): void
   terminate: () => void
 }
+
+export type CannonEvent = CollideBeginEvent | CollideEndEvent | CollideEvent | RayhitEvent
+export type CallbackByType<T extends { type: string }> = {
+  [K in T['type']]?: T extends { type: K } ? (e: T) => void : never
+}
+
+export type CannonEvents = { [uuid: string]: Partial<CallbackByType<CannonEvent>> }
+
+export type ScaleOverrides = { [uuid: string]: Vector3 }

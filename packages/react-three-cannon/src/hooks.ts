@@ -4,6 +4,7 @@ import type {
   BodyProps,
   BodyShapeType,
   BoxProps,
+  CannonEvents,
   CannonWorkerAPI,
   CompoundBodyProps,
   ConeTwistConstraintOpts,
@@ -38,12 +39,13 @@ import type {
   VectorName,
   WheelInfoOptions,
 } from '@pmndrs/cannon-worker-api'
+import { ContactMaterial } from '@pmndrs/cannon-worker-api'
 import type { DependencyList, MutableRefObject, Ref, RefObject } from 'react'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { DynamicDrawUsage, Euler, InstancedMesh, MathUtils, Object3D, Quaternion, Vector3 } from 'three'
 
 import { useDebugContext } from './debug-context'
-import type { CannonEvents } from './physics-context'
+import type {} from './physics-context'
 import { usePhysicsContext } from './physics-context'
 
 export type AtomicApi<K extends AtomicName> = {
@@ -162,7 +164,9 @@ function useBody<B extends BodyProps<unknown[]>, O extends Object3D>(
 ): Api<O> {
   const ref = useForwardedRef(fwdRef)
 
-  const { events, refs, scaleOverrides, subscriptions, worker } = usePhysicsContext()
+  const {
+    world: { events, refs, scaleOverrides, subscriptions, worker },
+  } = usePhysicsContext()
   const debugApi = useDebugContext()
 
   useLayoutEffect(() => {
@@ -494,7 +498,9 @@ function useConstraint<T extends 'Hinge' | ConstraintTypes, A extends Object3D, 
   optns: ConstraintOptns | HingeConstraintOpts = {},
   deps: DependencyList = [],
 ): ConstraintORHingeApi<T, A, B> {
-  const { worker } = usePhysicsContext()
+  const {
+    world: { worker },
+  } = usePhysicsContext()
   const uuid = MathUtils.generateUUID()
 
   const refA = useForwardedRef(bodyA)
@@ -580,7 +586,9 @@ export function useSpring<A extends Object3D, B extends Object3D>(
   optns: SpringOptns,
   deps: DependencyList = [],
 ): SpringApi<A, B> {
-  const { worker } = usePhysicsContext()
+  const {
+    world: { worker },
+  } = usePhysicsContext()
   const [uuid] = useState(() => MathUtils.generateUUID())
 
   const refA = useForwardedRef(bodyA)
@@ -616,7 +624,9 @@ function useRay(
   callback: (e: RayhitEvent) => void,
   deps: DependencyList = [],
 ) {
-  const { worker, events } = usePhysicsContext()
+  const {
+    world: { worker, events },
+  } = usePhysicsContext()
   const [uuid] = useState(() => MathUtils.generateUUID())
   useEffect(() => {
     events[uuid] = { rayhit: callback }
@@ -680,7 +690,9 @@ export function useRaycastVehicle<O extends Object3D>(
   deps: DependencyList = [],
 ): [RefObject<O>, RaycastVehiclePublicApi] {
   const ref = useForwardedRef(fwdRef)
-  const { worker, subscriptions } = usePhysicsContext()
+  const {
+    world: { worker, subscriptions },
+  } = usePhysicsContext()
 
   useLayoutEffect(() => {
     if (!ref.current) {
@@ -751,16 +763,13 @@ export function useContactMaterial(
   options: ContactMaterialOptions,
   deps: DependencyList = [],
 ): void {
-  const { worker } = usePhysicsContext()
-  const [uuid] = useState(() => MathUtils.generateUUID())
+  const { world } = usePhysicsContext()
 
   useEffect(() => {
-    worker.addContactMaterial({
-      props: [materialA, materialB, options],
-      uuid,
-    })
+    const material = new ContactMaterial(materialA, materialB, options)
+    world.addContactMaterial(material)
     return () => {
-      worker.removeContactMaterial({ uuid })
+      world.removeContactMaterial(material)
     }
   }, deps)
 }
