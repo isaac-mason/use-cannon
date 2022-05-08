@@ -1,5 +1,5 @@
 import type { ContactMaterialOptions, MaterialOptions, RayOptions as RayOptionsImpl, Shape } from 'cannon-es'
-import type { Object3D, Vector3 } from 'three'
+import type { Euler, Object3D, Quaternion, Vector3 } from 'three'
 
 import type { AtomicProps, BodyShapeType } from './body'
 
@@ -416,3 +416,37 @@ export type CallbackByType<T extends { type: string }> = {
 export type CannonEvents = { [uuid: string]: Partial<CallbackByType<CannonEvent>> }
 
 export type ScaleOverrides = { [uuid: string]: Vector3 }
+
+export type AtomicApi<K extends AtomicName> = {
+  set: (value: AtomicProps[K]) => void
+  subscribe: (callback: (value: AtomicProps[K]) => void) => () => void
+}
+
+export type QuaternionApi = {
+  copy: ({ w, x, y, z }: Quaternion) => void
+  set: (x: number, y: number, z: number, w: number) => void
+  subscribe: (callback: (value: Quad) => void) => () => void
+}
+
+export type VectorApi = {
+  copy: ({ x, y, z }: Vector3 | Euler) => void
+  set: (x: number, y: number, z: number) => void
+  subscribe: (callback: (value: Triplet) => void) => () => void
+}
+
+export type WorkerApi = {
+  [K in AtomicName]: AtomicApi<K>
+} & {
+  [K in VectorName]: VectorApi
+} & {
+  applyForce: (force: Triplet, worldPoint: Triplet) => void
+  applyImpulse: (impulse: Triplet, worldPoint: Triplet) => void
+  applyLocalForce: (force: Triplet, localPoint: Triplet) => void
+  applyLocalImpulse: (impulse: Triplet, localPoint: Triplet) => void
+  applyTorque: (torque: Triplet) => void
+  quaternion: QuaternionApi
+  rotation: VectorApi
+  scaleOverride: (scale: Triplet) => void
+  sleep: () => void
+  wakeUp: () => void
+}

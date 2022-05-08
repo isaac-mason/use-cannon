@@ -1,11 +1,11 @@
-import type { World } from '@pmndrs/cannon-worker-api'
+import { World } from '@pmndrs/cannon-worker-api'
 import { createContext, useContext } from 'react'
 
 export type PhysicsContext = {
   world: World
 }
 
-export const physicsContext = createContext<PhysicsContext | null>(null)
+export const physicsContext = createContext<PhysicsContext>({ world: new World() })
 
 export const usePhysicsContext = () => {
   const context = useContext(physicsContext)

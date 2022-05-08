@@ -1,3 +1,4 @@
+import type { WorldDebugApi } from '@pmndrs/cannon-worker-api'
 import { propsToBody } from '@pmndrs/cannon-worker-api'
 import { useFrame } from '@react-three/fiber'
 import type { Body, Quaternion as CQuaternion, Vec3, World } from 'cannon-es'
@@ -7,7 +8,6 @@ import { useMemo, useRef, useState } from 'react'
 import type { Color, Object3D } from 'three'
 import { InstancedMesh, Matrix4, Quaternion, Scene, Vector3 } from 'three'
 
-import type { DebugApi } from './debug-context'
 import { debugContext } from './debug-context'
 import { usePhysicsContext } from './physics-context'
 
@@ -39,15 +39,13 @@ export function DebugProvider({
   scale = 1,
 }: PropsWithChildren<DebugProviderProps>): JSX.Element {
   const [{ bodies, bodyMap }] = useState<DebugInfo>({ bodies: [], bodyMap: {} })
-  const {
-    world: { refs },
-  } = usePhysicsContext()
+  const { world } = usePhysicsContext()
   const [scene] = useState(() => new Scene())
   const cannonDebuggerRef = useRef(impl(scene, { bodies } as World, { color, scale }))
 
   useFrame(() => {
     for (const uuid in bodyMap) {
-      getMatrix(refs[uuid]).decompose(v, q, s)
+      getMatrix(world.refs[uuid]).decompose(v, q, s)
       bodyMap[uuid].position.copy(v as unknown as Vec3)
       bodyMap[uuid].quaternion.copy(q as unknown as CQuaternion)
     }
@@ -55,8 +53,8 @@ export function DebugProvider({
     cannonDebuggerRef.current.update()
   })
 
-  const api = useMemo<DebugApi>(
-    () => ({
+  const api = useMemo<WorldDebugApi>(() => {
+    const api: WorldDebugApi = {
       add(uuid, props, type) {
         const body = propsToBody({ props, type, uuid })
         bodies.push(body)
@@ -67,9 +65,10 @@ export function DebugProvider({
         if (index !== -1) bodies.splice(index, 1)
         delete bodyMap[uuid]
       },
-    }),
-    [bodies, bodyMap],
-  )
+    }
+    world.debugger = api
+    return api
+  }, [bodies, bodyMap])
 
   return (
     <debugContext.Provider value={api}>

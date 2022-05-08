@@ -1,18 +1,9 @@
-import type {
-  WorkerCollideBeginEvent,
-  WorkerCollideEndEvent,
-  WorkerCollideEvent,
-  WorkerFrameMessage,
-  WorkerRayhitEvent,
-  WorldProps,
-} from '@pmndrs/cannon-worker-api'
+import type { WorldProps } from '@pmndrs/cannon-worker-api'
 import { World } from '@pmndrs/cannon-worker-api'
 import type { RenderCallback } from '@react-three/fiber'
 import { useFrame, useThree } from '@react-three/fiber'
 import type { PropsWithChildren } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { Object3D } from 'three'
-import { InstancedMesh, Matrix4, Quaternion, Vector3 } from 'three'
 
 import type { PhysicsContext } from './physics-context'
 import { physicsContext } from './physics-context'
@@ -22,29 +13,6 @@ export type PhysicsProviderProps = WorldProps & {
   maxSubSteps?: number
   shouldInvalidate?: boolean
   stepSize?: number
-}
-
-const v = new Vector3()
-const s = new Vector3(1, 1, 1)
-const q = new Quaternion()
-const m = new Matrix4()
-
-function apply(
-  index: number,
-  positions: Float32Array,
-  quaternions: Float32Array,
-  scale = s,
-  object?: Object3D,
-) {
-  if (index !== undefined) {
-    m.compose(v.fromArray(positions, index * 3), q.fromArray(quaternions, index * 4), scale)
-    if (object) {
-      object.matrixAutoUpdate = false
-      object.matrix.copy(m)
-    }
-    return m
-  }
-  return m.identity()
 }
 
 export function PhysicsProvider({
@@ -83,7 +51,11 @@ export function PhysicsProvider({
     }),
   }))
 
-  const { bodies, events, refs, scaleOverrides, subscriptions, worker } = world
+  useEffect(() => {
+    if (shouldInvalidate) {
+      world.onInvalidate = () => invalidate()
+    }
+  }, [shouldInvalidate])
 
   let timeSinceLastCalled = 0
 
@@ -91,153 +63,38 @@ export function PhysicsProvider({
     (_, delta) => {
       if (isPaused) return
       timeSinceLastCalled += delta
-      worker.step({ maxSubSteps, stepSize, timeSinceLastCalled })
+      world.step(stepSize, timeSinceLastCalled, maxSubSteps)
       timeSinceLastCalled = 0
     },
     [isPaused, maxSubSteps, stepSize],
   )
-
-  const collideHandler = ({
-    body,
-    contact: { bi, bj, ...contactRest },
-    target,
-    ...rest
-  }: WorkerCollideEvent['data']) => {
-    const cb = events[target]?.collide
-    cb &&
-      cb({
-        body: refs[body],
-        contact: {
-          bi: refs[bi],
-          bj: refs[bj],
-          ...contactRest,
-        },
-        target: refs[target],
-        ...rest,
-      })
-  }
-
-  const collideBeginHandler = ({ bodyA, bodyB }: WorkerCollideBeginEvent['data']) => {
-    const cbA = events[bodyA]?.collideBegin
-    cbA &&
-      cbA({
-        body: refs[bodyB],
-        op: 'event',
-        target: refs[bodyA],
-        type: 'collideBegin',
-      })
-    const cbB = events[bodyB]?.collideBegin
-    cbB &&
-      cbB({
-        body: refs[bodyA],
-        op: 'event',
-        target: refs[bodyB],
-        type: 'collideBegin',
-      })
-  }
-
-  const collideEndHandler = ({ bodyA, bodyB }: WorkerCollideEndEvent['data']) => {
-    const cbA = events[bodyA]?.collideEnd
-    cbA &&
-      cbA({
-        body: refs[bodyB],
-        op: 'event',
-        target: refs[bodyA],
-        type: 'collideEnd',
-      })
-    const cbB = events[bodyB]?.collideEnd
-    cbB &&
-      cbB({
-        body: refs[bodyA],
-        op: 'event',
-        target: refs[bodyB],
-        type: 'collideEnd',
-      })
-  }
-
-  const frameHandler = ({
-    active,
-    bodies: uuids = [],
-    observations,
-    positions,
-    quaternions,
-  }: WorkerFrameMessage['data']) => {
-    for (let i = 0; i < uuids.length; i++) {
-      bodies[uuids[i]] = i
-    }
-    observations.forEach(([id, value, type]) => {
-      const subscription = subscriptions[id] || {}
-      const cb = subscription[type]
-      // HELP: We clearly know the type of the callback, but typescript can't deal with it
-      cb && cb(value as never)
-    })
-
-    if (active) {
-      for (const ref of Object.values(refs)) {
-        if (ref instanceof InstancedMesh) {
-          for (let i = 0; i < ref.count; i++) {
-            const uuid = `${ref.uuid}/${i}`
-            const index = bodies[uuid]
-            if (index !== undefined) {
-              ref.setMatrixAt(i, apply(index, positions, quaternions, scaleOverrides[uuid]))
-              ref.instanceMatrix.needsUpdate = true
-            }
-          }
-        } else {
-          const scale = scaleOverrides[ref.uuid] || ref.scale
-          apply(bodies[ref.uuid], positions, quaternions, scale, ref)
-        }
-      }
-      if (shouldInvalidate) {
-        invalidate()
-      }
-    }
-  }
-
-  const rayhitHandler = ({ body, ray: { uuid, ...rayRest }, ...rest }: WorkerRayhitEvent['data']) => {
-    const cb = events[uuid]?.rayhit
-    cb &&
-      cb({
-        body: body ? refs[body] : null,
-        ray: { uuid, ...rayRest },
-        ...rest,
-      })
-  }
 
   // Run loop *after* all the physics objects have ran theirs!
   // Otherwise the buffers will be invalidated by the browser
   useFrame(loop)
 
   useEffect(() => {
-    worker.connect()
-    worker.init()
-
-    worker.on('collide', collideHandler)
-    worker.on('collideBegin', collideBeginHandler)
-    worker.on('collideEnd', collideEndHandler)
-    worker.on('frame', frameHandler)
-    worker.on('rayhit', rayhitHandler)
+    world.init()
 
     return () => {
-      worker.terminate()
-      worker.removeAllListeners()
+      world.terminate()
     }
   }, [])
 
   useEffect(() => {
-    worker.axisIndex = axisIndex
+    world.axisIndex = axisIndex
   }, [axisIndex])
   useEffect(() => {
-    worker.broadphase = broadphase
+    world.broadphase = broadphase
   }, [broadphase])
   useEffect(() => {
-    worker.gravity = gravity
+    world.gravity = gravity
   }, [gravity])
   useEffect(() => {
-    worker.iterations = iterations
+    world.iterations = iterations
   }, [iterations])
   useEffect(() => {
-    worker.tolerance = tolerance
+    world.tolerance = tolerance
   }, [tolerance])
 
   const value = useMemo<PhysicsContext>(() => ({ world }), [world])
